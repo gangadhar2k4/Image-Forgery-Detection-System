@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}Metadata Analysis - Forgery Detection{% endblock %}
+
+{% block content %}
+<div class="metadata-container">
+    <h1 class="page-title">EXIF Metadata Analysis</h1>
+    
+    <div class="loading-section" id="loadingSection">
+        <div class="spinner"></div>
+        <p>Extracting metadata... Please wait</p>
+    </div>
+
+    <div class="metadata-section" id="metadataSection" style="display: none;">
+        <div class="metadata-grid">
+            <div class="metadata-card">
+                <h3>📷 Camera Information</h3>
+                <div id="cameraInfo" class="info-content"></div>
+            </div>
+
+            <div class="metadata-card">
+                <h3>🕒 Timestamps</h3>
+                <div id="timestampInfo" class="info-content"></div>
+            </div>
+
+            <div class="metadata-card">
+                <h3>💻 Software & Editing</h3>
+                <div id="softwareInfo" class="info-content"></div>
+            </div>
+
+            <div class="metadata-card">
+                <h3>📍 GPS Location</h3>
+                <div id="gpsInfo" class="info-content"></div>
+            </div>
+
+            <div class="metadata-card">
+                <h3>📊 Basic Properties</h3>
+                <div id="basicInfo" class="info-content"></div>
+            </div>
+
+            <div class="metadata-card warnings-card">
+                <h3>⚠️ Warnings & Alerts</h3>
+                <div id="warningsInfo" class="info-content"></div>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <a href="/analysis/{{ filename }}" class="btn btn-secondary">Back to Analysis</a>
+            <a href="/upload" class="btn btn-secondary">Analyze Another Image</a>
+        </div>
+    </div>
+
+    <div class="error-section" id="errorSection" style="display: none;">
+        <p id="errorText"></p>
+        <a href="/upload" class="btn btn-secondary">Back to Upload</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const filename = "{{ filename }}";
+    
+    window.addEventListener('DOMContentLoaded', () => {
+        fetch(`/api/metadata/${filename}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loadingSection').style.display = 'none';
+                
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                displayMetadata(data.metadata);
+            })
+            .catch(error => {
+                document.getElementById('loadingSection').style.display = 'none';
+                showError('Metadata extraction failed: ' + error.message);
+            });
+    });
+
+    function displayMetadata(metadata) {
+        document.getElementById('metadataSection').style.display = 'block';
+
+        const cameraInfo = document.getElementById('cameraInfo');
+        if (metadata.camera && Object.keys(metadata.camera).length > 0) {
+            let html = '<ul>';
+            if (metadata.camera.make) html += `<li><strong>Make:</strong> ${metadata.camera.make}</li>`;
+            if (metadata.camera.model) html += `<li><strong>Model:</strong> ${metadata.camera.model}</li>`;
+            html += '</ul>';
+            cameraInfo.innerHTML = html;
+        } else {
+            cameraInfo.innerHTML = '<p class="no-data">No camera information available</p>';
+        }
+
+        const timestampInfo = document.getElementById('timestampInfo');
+        if (metadata.timestamps && Object.keys(metadata.timestamps).length > 0) {
+            let html = '<ul>';
+            if (metadata.timestamps.original) html += `<li><strong>Original:</strong> ${metadata.timestamps.original}</li>`;
+            if (metadata.timestamps.digitized) html += `<li><strong>Digitized:</strong> ${metadata.timestamps.digitized}</li>`;
+            html += '</ul>';
+            timestampInfo.innerHTML = html;
+        } else {
+            timestampInfo.innerHTML = '<p class="no-data">No timestamp information available</p>';
+        }
+
+        const softwareInfo = document.getElementById('softwareInfo');
+        if (metadata.software && Object.keys(metadata.software).length > 0) {
+            let html = '<ul>';
+            if (metadata.software.editing_software) {
+                html += `<li><strong>Software:</strong> ${metadata.software.editing_software}</li>`;
+            }
+            html += '</ul>';
+            softwareInfo.innerHTML = html;
+        } else {
+            softwareInfo.innerHTML = '<p class="no-data">No software information available</p>';
+        }
+
+        const gpsInfo = document.getElementById('gpsInfo');
+        if (metadata.gps && Object.keys(metadata.gps).length > 0) {
+            let html = '<ul>';
+            if (metadata.gps.latitude) html += `<li><strong>Latitude:</strong> ${metadata.gps.latitude}</li>`;
+            if (metadata.gps.longitude) html += `<li><strong>Longitude:</strong> ${metadata.gps.longitude}</li>`;
+            html += '</ul>';
+            gpsInfo.innerHTML = html;
+        } else {
+            gpsInfo.innerHTML = '<p class="no-data">No GPS data available</p>';
+        }
+
+        const basicInfo = document.getElementById('basicInfo');
+        if (metadata.basic) {
+            let html = '<ul>';
+            if (metadata.basic.filename) html += `<li><strong>Filename:</strong> ${metadata.basic.filename}</li>`;
+            if (metadata.basic.format) html += `<li><strong>Format:</strong> ${metadata.basic.format}</li>`;
+            if (metadata.basic.size) html += `<li><strong>Dimensions:</strong> ${metadata.basic.size}</li>`;
+            if (metadata.basic.file_size) html += `<li><strong>File Size:</strong> ${metadata.basic.file_size}</li>`;
+            html += '</ul>';
+            basicInfo.innerHTML = html;
+        } else {
+            basicInfo.innerHTML = '<p class="no-data">No basic information available</p>';
+        }
+
+        const warningsInfo = document.getElementById('warningsInfo');
+        if (metadata.warnings && metadata.warnings.length > 0) {
+            let html = '<ul class="warnings-list">';
+            metadata.warnings.forEach(warning => {
+                const icon = warning.type === 'alert' ? '🔴' : warning.type === 'warning' ? '🟡' : 'ℹ️';
+                html += `<li class="warning-${warning.type}">${icon} ${warning.message}</li>`;
+            });
+            html += '</ul>';
+            warningsInfo.innerHTML = html;
+        } else {
+            warningsInfo.innerHTML = '<p class="no-warnings">✅ No warnings detected</p>';
+        }
+    }
+
+    function showError(message) {
+        document.getElementById('errorText').textContent = message;
+        document.getElementById('errorSection').style.display = 'block';
+    }
+</script>
+{% endblock %}

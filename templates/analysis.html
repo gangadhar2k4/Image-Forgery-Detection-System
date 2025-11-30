@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}Analysis Results - Forgery Detection{% endblock %}
+
+{% block content %}
+<div class="analysis-container">
+    <h1 class="page-title">Forensic Analysis Results</h1>
+    
+    <div class="loading-section" id="loadingSection">
+        <div class="spinner"></div>
+        <p>Running forensic analysis... Please wait</p>
+    </div>
+
+    <div class="results-section" id="resultsSection" style="display: none;">
+        <div class="verdict-card" id="verdictCard">
+            <h2>Detection Result</h2>
+            <div class="verdict-badge" id="verdictBadge"></div>
+            <div class="confidence-score" id="confidenceScore"></div>
+            <div class="sub-scores" id="subScores"></div>
+        </div>
+
+        <div class="insights-section" id="insightsSection" style="display: none;">
+            <h2>Forensic Insights</h2>
+            <div class="insights-grid" id="insightsGrid"></div>
+        </div>
+
+        <div class="visualization-section">
+            <h2>Visual Analysis</h2>
+            <div class="view-toggle">
+                <button class="toggle-btn active" data-view="original">Original</button>
+                <button class="toggle-btn" data-view="heatmap">Heatmap</button>
+                <button class="toggle-btn" data-view="overlay">Overlay</button>
+                <button class="toggle-btn" data-view="sidebyside">Side by Side</button>
+                <button class="toggle-btn" data-view="frequency">Frequency Residual</button>
+            </div>
+            
+            <div class="image-viewer" id="imageViewer">
+                <div class="view-container" id="originalView">
+                    <img src="/static/uploads/{{ filename }}" alt="Original">
+                </div>
+                <div class="view-container" id="heatmapView" style="display: none;">
+                    <img id="heatmapImage" src="" alt="Heatmap">
+                </div>
+                <div class="view-container" id="overlayView" style="display: none;">
+                    <img id="overlayImage" src="" alt="Overlay">
+                </div>
+                <div class="view-container" id="frequencyView" style="display: none;">
+                    <img id="frequencyImage" src="" alt="Frequency Residual">
+                </div>
+                <div class="view-container sidebyside" id="sidebyView" style="display: none;">
+                    <div class="side-image">
+                        <p>Original</p>
+                        <img src="/static/uploads/{{ filename }}" alt="Original">
+                    </div>
+                    <div class="side-image">
+                        <p>Heatmap</p>
+                        <img id="heatmapImage2" src="" alt="Heatmap">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="forensic-tabs">
+            <h2>Forensic Evidence</h2>
+            <div class="tab-buttons">
+                <button class="tab-btn active" data-tab="ela">Error Level Analysis</button>
+                <button class="tab-btn" data-tab="noise">Noise Residual</button>
+                <button class="tab-btn" data-tab="frequency">Frequency Residual</button>
+            </div>
+            
+            <div class="tab-content">
+                <div class="tab-panel active" id="elaTab">
+                    <div class="forensic-card">
+                        <img id="elaImage" src="" alt="ELA Map">
+                        <div class="forensic-info" id="elaInfo"></div>
+                    </div>
+                </div>
+                <div class="tab-panel" id="noiseTab">
+                    <div class="forensic-card">
+                        <img id="noiseImage" src="" alt="Noise Map">
+                        <div class="forensic-info" id="noiseInfo"></div>
+                    </div>
+                </div>
+                <div class="tab-panel" id="frequencyTab">
+                    <div class="forensic-card">
+                        <img id="frequencyTabImage" src="" alt="Frequency Map">
+                        <div class="forensic-info" id="frequencyInfo"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <a href="/metadata/{{ filename }}" class="btn btn-secondary">View Metadata Analysis</a>
+            <button class="btn btn-primary" id="generateReportBtn">Generate PDF Report</button>
+            <a href="/upload" class="btn btn-secondary">Analyze Another Image</a>
+        </div>
+    </div>
+
+    <div class="error-section" id="errorSection" style="display: none;">
+        <p id="errorText"></p>
+        <a href="/upload" class="btn btn-secondary">Back to Upload</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const filename = "{{ filename }}";
+
+    function formatNumber(value, decimals = 2) {
+        const num = Number(value);
+        return Number.isFinite(num) ? num.toFixed(decimals) : 'N/A';
+    }
+    
+    window.addEventListener('DOMContentLoaded', () => {
+        fetch(`/api/analyze/${filename}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loadingSection').style.display = 'none';
+                
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                displayResults(data);
+            })
+            .catch(error => {
+                document.getElementById('loadingSection').style.display = 'none';
+                showError('Analysis failed: ' + error.message);
+            });
+    });
+
+    function displayResults(data) {
+        const resultsSection = document.getElementById('resultsSection');
+        resultsSection.style.display = 'block';
+
+        const forgery = data.forgery;
+        const verdictBadge = document.getElementById('verdictBadge');
+        verdictBadge.innerHTML = `<span class="badge badge-${forgery.color}">${forgery.verdict}</span>`;
+        
+        const confidenceScore = document.getElementById('confidenceScore');
+        confidenceScore.innerHTML = `<p><strong>Confidence Score:</strong> ${forgery.confidence}%</p>`;
+        
+        const subScores = document.getElementById('subScores');
+        subScores.innerHTML = `
+            <p><small>ELA Score: ${forgery.ela_score}%</small></p>
+            <p><small>Noise Score: ${forgery.noise_score}%</small></p>
+            <p><small>Frequency Score: ${forgery.freq_score || 0}%</small></p>
+        `;
+
+        if (data.heatmap && data.heatmap.heatmap_path) {
+            document.getElementById('heatmapImage').src = data.heatmap.heatmap_path;
+            document.getElementById('heatmapImage2').src = data.heatmap.heatmap_path;
+        }
+
+        if (data.heatmap && data.heatmap.overlay_path) {
+            document.getElementById('overlayImage').src = data.heatmap.overlay_path;
+        }
+
+        renderInsights(forgery.insights);
+
+        if (data.frequency && data.frequency.image_path) {
+            document.getElementById('frequencyImage').src = data.frequency.image_path;
+            document.getElementById('frequencyTabImage').src = data.frequency.image_path;
+            document.getElementById('frequencyInfo').innerHTML = `
+                <p><strong>Energy Ratio:</strong> ${formatNumber(data.frequency.energy_ratio, 4)}</p>
+                <p>${data.frequency.description || ''}</p>
+            `;
+        }
+
+        if (data.ela && data.ela.image_path) {
+            document.getElementById('elaImage').src = data.ela.image_path;
+            document.getElementById('elaInfo').innerHTML = `
+                <p><strong>Average ELA Value:</strong> ${formatNumber(data.ela.avg_value)}</p>
+                <p>${data.ela.description || ''}</p>
+            `;
+        }
+
+        if (data.noise && data.noise.image_path) {
+            document.getElementById('noiseImage').src = data.noise.image_path;
+            document.getElementById('noiseInfo').innerHTML = `
+                <p><strong>Noise STD:</strong> ${formatNumber(data.noise.std_value)}</p>
+                <p>${data.noise.description || ''}</p>
+            `;
+        }
+    }
+
+    const levelToIcon = {
+        alert: '🛑',
+        warning: '⚠️',
+        info: 'ℹ️'
+    };
+
+    function renderInsights(insights = []) {
+        const section = document.getElementById('insightsSection');
+        const grid = document.getElementById('insightsGrid');
+
+        if (!insights || insights.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
+
+        section.style.display = 'block';
+        grid.innerHTML = '';
+
+        insights.forEach(({ level, title, detail }) => {
+            const card = document.createElement('div');
+            card.className = `insight-card insight-${level}`;
+            card.innerHTML = `
+                <div class="insight-icon">${levelToIcon[level] || 'ℹ️'}</div>
+                <div class="insight-content">
+                    <h3>${title}</h3>
+                    <p>${detail}</p>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    document.querySelectorAll('.toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            const view = btn.dataset.view;
+            document.querySelectorAll('.view-container').forEach(v => v.style.display = 'none');
+            document.getElementById(view + 'View').style.display = 'block';
+        });
+    });
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            
+            btn.classList.add('active');
+            document.getElementById(btn.dataset.tab + 'Tab').classList.add('active');
+        });
+    });
+
+    document.getElementById('generateReportBtn').addEventListener('click', () => {
+        const btn = document.getElementById('generateReportBtn');
+        btn.disabled = true;
+        btn.textContent = 'Generating...';
+        
+        fetch(`/api/generate-report/${filename}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    btn.disabled = false;
+                    btn.textContent = 'Generate PDF Report';
+                } else {
+                    window.location.href = data.download_url;
+                    btn.disabled = false;
+                    btn.textContent = 'Generate PDF Report';
+                }
+            })
+            .catch(error => {
+                alert('Error generating report: ' + error.message);
+                btn.disabled = false;
+                btn.textContent = 'Generate PDF Report';
+            });
+    });
+
+    function showError(message) {
+        document.getElementById('errorText').textContent = message;
+        document.getElementById('errorSection').style.display = 'block';
+    }
+</script>
+{% endblock %}

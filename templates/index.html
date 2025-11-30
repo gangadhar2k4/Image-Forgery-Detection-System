@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="hero-section">
+    <h1 class="hero-title">Image Forgery Detection System</h1>
+    <p class="hero-subtitle">AI-powered tampering analysis for digital evidence</p>
+    <p class="hero-description">
+        This project evaluates uploaded images using Error Level Analysis, noise residual maps,
+        frequency transforms, and metadata auditing to highlight suspicious edits. Review
+        visual overlays, insight cards, and detailed confidence scores before downloading a
+        shareable investigation report.
+    </p>
+    <a href="/upload" class="btn btn-primary btn-large">Launch Analyzer</a>
+</div>
+
+<div class="features-section">
+    <h2 class="section-title">Core Features</h2>
+    <div class="features-grid">
+        <div class="feature-card">
+            <div class="feature-icon">🖼️</div>
+            <h3>Upload & Preprocess</h3>
+            <p>Accepts JPG, PNG, and WEBP images with automatic resizing, validation, and secure local storage.</p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-icon">📐</div>
+            <h3>Error Level Analysis</h3>
+            <p>Highlights compression artifacts so manipulated regions glow brighter than authentic content.</p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-icon">🌊</div>
+            <h3>Noise Residual Maps</h3>
+            <p>Compares noise statistics across the image to expose pasted objects and cloned textures.</p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-icon">🛰️</div>
+            <h3>Metadata Auditor</h3>
+            <p>Inspects EXIF details, camera signatures, and edit history to flag missing or altered fields.</p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-icon">🔥</div>
+            <h3>Heatmap & Overlay Views</h3>
+            <p>Side-by-side visualizations compare the original image with ELA, heatmap, and overlay outputs.</p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-icon">🎯</div>
+            <h3>Confidence Verdicts</h3>
+            <p>Aggregates ELA, noise, and frequency scores to produce a single authenticity verdict.</p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-icon">📄</div>
+            <h3>Investigation Reports</h3>
+            <p>Generate PDF summaries containing visual evidence, metadata findings, and insight notes.</p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-icon">📚</div>
+            <h3>Analysis History</h3>
+            <p>Access previous investigations to compare results or download reports again when needed.</p>
+        </div>
+    </div>
+</div>
+
+<div class="how-it-works-section">
+    <h2 class="section-title">How It Works</h2>
+    <div class="steps-grid">
+        <div class="step-card">
+            <div class="step-number">1</div>
+            <h3>Upload Image</h3>
+            <p>Upload your image file for analysis</p>
+        </div>
+        <div class="step-card">
+            <div class="step-number">2</div>
+            <h3>AI Analysis</h3>
+            <p>Our system performs multiple forensic tests</p>
+        </div>
+        <div class="step-card">
+            <div class="step-number">3</div>
+            <h3>View Results</h3>
+            <p>Get detailed analysis and visual evidence</p>
+        </div>
+        <div class="step-card">
+            <div class="step-number">4</div>
+            <h3>Download Report</h3>
+            <p>Generate PDF report with all findings</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

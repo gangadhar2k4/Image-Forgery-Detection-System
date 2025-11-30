@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Image - Image Forgery Detection{% endblock %}
+
+{% block content %}
+<div class="upload-container">
+    <h1 class="page-title">Image Intake Workspace</h1>
+    <p class="page-subtitle">Supported formats: JPG • PNG • WEBP | Max size 16 MB</p>
+
+    <div class="upload-section">
+        <div class="dropzone" id="dropzone">
+            <div class="dropzone-content">
+                <div class="upload-icon">🖼️</div>
+                <h3>Drag & Drop Your Image</h3>
+                <p>or</p>
+                <label for="fileInput" class="btn btn-secondary">Browse Files</label>
+                <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.webp" style="display: none;">
+            </div>
+        </div>
+
+        <div class="preview-section" id="previewSection" style="display: none;">
+            <h3>Preview & Image Details</h3>
+            <div class="preview-container">
+                <img id="previewImage" src="" alt="Preview">
+            </div>
+            <div class="image-details" id="imageDetails"></div>
+            <div class="upload-actions">
+                <button class="btn btn-primary" id="analyzeBtn">Start Analysis</button>
+                <button class="btn btn-secondary" id="removeBtn">Remove Image</button>
+            </div>
+        </div>
+
+        <div class="loading-section" id="loadingSection" style="display: none;">
+            <div class="spinner"></div>
+            <p>Uploading image and preparing forensic checks...</p>
+        </div>
+
+        <div class="error-message" id="errorMessage" style="display: none;"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const previewSection = document.getElementById('previewSection');
+    const previewImage = document.getElementById('previewImage');
+    const imageDetails = document.getElementById('imageDetails');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const removeBtn = document.getElementById('removeBtn');
+    const loadingSection = document.getElementById('loadingSection');
+    const errorMessage = document.getElementById('errorMessage');
+
+    let uploadedFilename = null;
+
+    dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+    });
+
+    dropzone.addEventListener('dragleave', () => {
+        dropzone.classList.remove('dragover');
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        handleFile(file);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        handleFile(file);
+    });
+
+    function handleFile(file) {
+        if (!file) return;
+
+        errorMessage.style.display = 'none';
+
+        const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        if (!validTypes.includes(file.type)) {
+            showError('Invalid file type. Please upload JPG, PNG, or WEBP');
+            return;
+        }
+
+        if (file.size > 16 * 1024 * 1024) {
+            showError('File too large. Maximum size is 16 MB');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('image', file);
+
+        loadingSection.style.display = 'block';
+        dropzone.style.display = 'none';
+
+        fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            loadingSection.style.display = 'none';
+            
+            if (data.error) {
+                showError(data.error);
+                dropzone.style.display = 'block';
+                return;
+            }
+
+            uploadedFilename = data.filename;
+            previewImage.src = `/static/uploads/${data.filename}`;
+            previewSection.style.display = 'block';
+
+            const details = data.details;
+            imageDetails.innerHTML = `
+                <p><strong>Format:</strong> ${details.format}</p>
+                <p><strong>Dimensions:</strong> ${details.width} x ${details.height} pixels</p>
+                <p><strong>File Size:</strong> ${(details.size / 1024).toFixed(2)} KB</p>
+            `;
+        })
+        .catch(error => {
+            loadingSection.style.display = 'none';
+            dropzone.style.display = 'block';
+            showError('Upload failed: ' + error.message);
+        });
+    }
+
+    removeBtn.addEventListener('click', () => {
+        previewSection.style.display = 'none';
+        dropzone.style.display = 'block';
+        fileInput.value = '';
+        uploadedFilename = null;
+    });
+
+    analyzeBtn.addEventListener('click', () => {
+        if (uploadedFilename) {
+            window.location.href = `/analysis/${uploadedFilename}`;
+        }
+    });
+
+    function showError(message) {
+        errorMessage.textContent = message;
+        errorMessage.style.display = 'block';
+    }
+</script>
+{% endblock %}
